@@ -40,11 +40,11 @@ def keep_alive():
     print("✅ Flask Keep-Alive server started.")
 # --- End Flask Keep Alive ---
 # --- Configuration ---
-TOKEN = '7626175588:AAExy_qI9eplPj9qa3w0BIBRy1Y6HIzf2fc'
-OWNER_ID = 5585016655
-ADMIN_ID = 5585016655
-YOUR_USERNAME = '@Harshit_5stare'
-UPDATE_CHANNEL = 'https://t.me/GUILD_GLORY_BOT_LEADER'
+TOKEN = '8729646041:AAHt2hledBanfpKNiDtjWbsS_3MT-aWQIsg'
+OWNER_ID = 7038931465
+ADMIN_ID = 7038931465
+YOUR_USERNAME = '@Niloy6978'
+UPDATE_CHANNEL = 'https://t.me/tgbot7382'
 # Folder setup
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 UPLOAD_BOTS_DIR = os.path.join(BASE_DIR, 'upload_bots')
