@@ -77,8 +77,6 @@ active_users = set()
 admin_ids = {ADMIN_ID, OWNER_ID}
 bot_locked = False
 bot_start_time = datetime.now()
-
-# Animation States
 user_operations = {}
 
 # --- Logging Setup ---
@@ -145,7 +143,6 @@ def send_animated_message(chat_id, final_text, animation_type="loading", duratio
             "terminal": "Initializing terminal"
         }
         action_text = action_map.get(animation_type, "Processing")
-
         msg = None
         for i in range(steps + 1):
             percent = int((i / steps) * 100)
@@ -159,7 +156,6 @@ def send_animated_message(chat_id, final_text, animation_type="loading", duratio
                 except:
                     pass
             time.sleep(duration / steps)
-
         try:
             bot.edit_message_text(final_text, chat_id, msg.message_id, parse_mode='HTML')
         except:
@@ -263,20 +259,14 @@ def is_bot_running_check(script_key):
             return False
     return False
 
-# --- NEW: Safe filename & extension helpers ---
+# --- Safe filename & extension helpers ---
 def sanitize_filename(name):
-    """Remove dangerous characters and path components."""
-    # Remove any path separators and parent directory references
     name = os.path.basename(name)
-    # Remove null bytes
     name = name.replace('\x00', '')
-    # Keep only allowed characters: alphanumeric, dot, underscore, hyphen
     allowed_chars = re.compile(r'[^a-zA-Z0-9._-]')
     name = allowed_chars.sub('_', name)
-    # Prevent names like '.' or '..'
     if name in ('.', '..'):
         name = '_' + name
-    # Ensure it's not empty
     if not name:
         name = 'unnamed_file'
     return name
@@ -287,7 +277,6 @@ RUNNABLE_EXTENSIONS = {
     'c', 'cpp', 'cc', 'cxx', 'ts', 'lua', 'pl', 'rs'
 }
 
-# Allowed non-runnable but supported list (for display/restriction? No, all are allowed)
 SUPPORTED_NON_RUNNABLE = {
     'txt', 'json', 'env', 'yaml', 'yml', 'xml', 'csv',
     'html', 'css', 'md',
@@ -301,7 +290,6 @@ def is_runnable_extension(ext):
     return ext.lower() in RUNNABLE_EXTENSIONS
 
 def get_file_icon(ext):
-    """Return an emoji icon based on extension."""
     ext = ext.lower()
     if ext == 'py':
         return '🐍'
@@ -332,9 +320,8 @@ def get_file_icon(ext):
     else:
         return '❓'
 
-# --- Database Functions (updated) ---
+# --- Database Functions ---
 def init_db():
-    """Initialize the database with required tables, including runtime column."""
     logger.info(f"Initializing database at: {DATABASE_PATH}")
     try:
         conn = sqlite3.connect(DATABASE_PATH, check_same_thread=False)
@@ -344,11 +331,10 @@ def init_db():
         c.execute('''CREATE TABLE IF NOT EXISTS user_files
 (user_id INTEGER, file_name TEXT, file_type TEXT, upload_time TEXT,
 file_size INTEGER, runnable INTEGER DEFAULT 0, PRIMARY KEY (user_id, file_name))''')
-        # Add runnable column if missing (for existing tables)
         try:
             c.execute("ALTER TABLE user_files ADD COLUMN runnable INTEGER DEFAULT 0")
         except sqlite3.OperationalError:
-            pass  # column already exists
+            pass
         c.execute('''CREATE TABLE IF NOT EXISTS active_users
 (user_id INTEGER PRIMARY KEY, username TEXT, first_seen TEXT, last_seen TEXT)''')
         c.execute('''CREATE TABLE IF NOT EXISTS admins
@@ -369,7 +355,6 @@ start_time TEXT, pid INTEGER)''')
         logger.error(f"❌ Database initialization error: {e}", exc_info=True)
 
 def load_data():
-    """Load data from database into memory."""
     logger.info("Loading data from database...")
     try:
         conn = sqlite3.connect(DATABASE_PATH, check_same_thread=False)
@@ -395,7 +380,6 @@ def load_data():
         logger.error(f"❌ Error loading data: {e}", exc_info=True)
 
 def save_user_file_db(user_id, file_name, file_type, file_size=0, runnable=False):
-    """Save file info to database."""
     try:
         conn = sqlite3.connect(DATABASE_PATH, check_same_thread=False)
         c = conn.cursor()
@@ -461,7 +445,7 @@ def save_subscription(user_id, expiry):
 init_db()
 load_data()
 
-# --- Helper Functions (extended) ---
+# --- Helper Functions ---
 def get_user_folder(user_id):
     user_folder = os.path.join(UPLOAD_BOTS_DIR, str(user_id))
     os.makedirs(user_folder, exist_ok=True)
@@ -535,7 +519,7 @@ def kill_process_tree(process_info):
     except Exception as e:
         logger.error(f"Error in kill_process_tree: {e}")
 
-# --- Package Installation (with --break-system-packages) ---
+# --- Package Installation ---
 TELEGRAM_MODULES = {
     'telebot': 'pytelegrambotapi',
     'telegram': 'python-telegram-bot',
@@ -618,7 +602,6 @@ def attempt_install_npm(module_name, user_folder, message):
 
 # --- Runners for various languages ---
 def run_script_python(script_path, user_id, user_folder, file_name, message_obj, attempt=1):
-    """Original Python runner (unchanged)*"""
     max_attempts = 3
     if attempt > max_attempts:
         bot.send_message(message_obj.chat.id, f"❌ Failed to run '{file_name}' after {max_attempts} attempts.")
@@ -717,7 +700,6 @@ def run_script_python(script_path, user_id, user_folder, file_name, message_obj,
         bot.send_message(message_obj.chat.id, f"❌ Error: {str(e)[:200]}")
 
 def run_script_node(script_path, user_id, user_folder, file_name, message_obj, attempt=1):
-    """Runner for JS/Node files (unchanged core, slightly renamed)"""
     max_attempts = 3
     if attempt > max_attempts:
         bot.send_message(message_obj.chat.id, f"❌ Failed to run '{file_name}' after {max_attempts} attempts.")
@@ -808,7 +790,6 @@ def run_script_node(script_path, user_id, user_folder, file_name, message_obj, a
         bot.send_message(message_obj.chat.id, f"❌ Error: {str(e)[:200]}")
 
 def run_generic_process(script_key, cmd, cwd, file_name, user_id, message_obj, lang_name, env=None):
-    """Launch a subprocess and track it (common runner)."""
     if not shutil.which(cmd[0]):
         bot.send_message(message_obj.chat.id,
                          f"❌ {lang_name} runtime not found. Please install: {cmd[0]}")
@@ -885,13 +866,11 @@ def run_generic_process(script_key, cmd, cwd, file_name, user_id, message_obj, l
         bot.send_message(message_obj.chat.id, f"❌ Error: {str(e)[:200]}")
 
 def compile_and_run(script_key, compile_cmd, run_cmd, cwd, file_name, user_id, message_obj, lang_name):
-    """Compile (if needed) then run a binary."""
     if not shutil.which(compile_cmd[0]):
         bot.send_message(message_obj.chat.id,
                          f"❌ {lang_name} compiler not found. Please install: {compile_cmd[0]}")
         return
     try:
-        # Show compile animation
         compile_msg = bot.send_message(message_obj.chat.id,
                                        f"⚙️ 𝐋ᴏᴀᴅɪɴɢ... (0%)\n[⬜⬜⬜⬜] Compiling {file_name}...")
         result = subprocess.run(compile_cmd, cwd=cwd, capture_output=True, text=True, timeout=30)
@@ -910,8 +889,6 @@ def compile_and_run(script_key, compile_cmd, run_cmd, cwd, file_name, user_id, m
     except Exception as e:
         bot.send_message(message_obj.chat.id, f"❌ Compilation error: {str(e)[:200]}")
         return
-
-    # Now run
     run_generic_process(script_key, run_cmd, cwd, file_name, user_id, message_obj, lang_name)
 
 def run_script_java(script_path, user_id, user_folder, file_name, message_obj):
@@ -919,7 +896,6 @@ def run_script_java(script_path, user_id, user_folder, file_name, message_obj):
     if not shutil.which('javac'):
         bot.send_message(message_obj.chat.id, "❌ Java compiler (javac) not found. Please install JDK.")
         return
-    # Compile
     compile_msg = bot.send_message(message_obj.chat.id,
                                    f"⚙️ 𝐋ᴏᴀᴅɪɴɢ... (0%)\n[⬜⬜⬜⬜] Compiling {file_name}...")
     try:
@@ -931,7 +907,6 @@ def run_script_java(script_path, user_id, user_folder, file_name, message_obj):
             )
             return
         class_name = os.path.splitext(file_name)[0]
-        # Run Java class
         run_generic_process(script_key, ['java', '-cp', user_folder, class_name],
                             user_folder, file_name, user_id, message_obj, 'Java')
     except Exception as e:
@@ -1023,7 +998,7 @@ def run_user_file(script_path, user_id, user_folder, file_name, message_obj, ext
     else:
         bot.send_message(message_obj.chat.id, "❌ Unsupported execution type.")
 
-# --- Keyboard Layouts (updated) ---
+# --- Keyboard Layouts ---
 def get_main_keyboard(user_id):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     if user_id == OWNER_ID or user_id in admin_ids:
@@ -1041,7 +1016,6 @@ def get_main_keyboard(user_id):
     return markup
 
 def get_file_actions_keyboard(file_name, is_running=False, runnable=True):
-    """Inline keyboard for file actions, respecting runnable flag."""
     markup = types.InlineKeyboardMarkup(row_width=2)
     if is_running:
         markup.add(
@@ -1069,7 +1043,7 @@ def get_file_actions_keyboard(file_name, is_running=False, runnable=True):
         markup.add(types.InlineKeyboardButton("🔙 Back", callback_data="back_to_files"))
     return markup
 
-# --- Command Handlers (mainly unchanged, only small adjustments) ---
+# --- Command Handlers ---
 @bot.message_handler(commands=['start'])
 def start_command(message):
     user_id = message.from_user.id
@@ -1136,7 +1110,6 @@ def help_command(message):
 
 @bot.message_handler(commands=['stats', 'statistics'])
 def stats_command(message):
-    user_id = message.from_user.id
     msg = send_spinner_animation(message.chat.id, "𝐆𝐚𝐭𝐡𝐞𝐫𝐢𝐧𝐠 MAHRAB DEV𝐬𝐭𝐚𝐭𝐬...", duration=2)
     stats_text = create_system_stats_message()
     try:
@@ -1495,7 +1468,7 @@ def show_admin_panel(message):
     )
     bot.send_message(message.chat.id, admin_text, parse_mode='HTML', reply_markup=markup)
 
-# --- File Upload Handler (updated) ---
+# --- File Upload Handler ---
 @bot.message_handler(content_types=['document'])
 def handle_document(message):
     user_id = message.from_user.id
@@ -1510,7 +1483,6 @@ def handle_document(message):
         file_ext = file_name.split('.')[-1].lower()
     else:
         file_ext = ''
-    # Sanitize file name
     safe_name = sanitize_filename(file_name)
     if safe_name != file_name:
         logger.info(f"Filename sanitized from '{file_name}' to '{safe_name}'")
@@ -1544,16 +1516,13 @@ def handle_document(message):
                 tmp.write(downloaded_file)
                 tmp_path = tmp.name
             try:
-                # Safe extraction
                 extracted_files = []
                 with zipfile.ZipFile(tmp_path, 'r') as zip_ref:
                     for member in zip_ref.infolist():
-                        # Normalize and sanitize member filename
                         member_name = sanitize_filename(member.filename)
                         if not member_name:
                             continue
                         target_path = os.path.join(user_folder, member_name)
-                        # Prevent path traversal: ensure target is inside user_folder
                         if not os.path.abspath(target_path).startswith(os.path.abspath(user_folder) + os.sep):
                             logger.warning(f"Blocked extraction: {member.filename} outside user folder")
                             continue
@@ -1565,7 +1534,6 @@ def handle_document(message):
                                 shutil.copyfileobj(source, dest)
                             ext = member_name.split('.')[-1].lower() if '.' in member_name else ''
                             runnable = is_runnable_extension(ext)
-                            # Add to user files
                             if user_id not in user_files:
                                 user_files[user_id] = []
                             user_files[user_id] = [(n, t) for n, t in user_files[user_id] if n != member_name]
@@ -1587,7 +1555,6 @@ def handle_document(message):
             with open(file_path, 'wb') as f:
                 f.write(downloaded_file)
             runnable = is_runnable_extension(file_ext) if file_ext else False
-            # Update user files list
             if user_id not in user_files:
                 user_files[user_id] = []
             user_files[user_id] = [(n, t) for n, t in user_files[user_id] if n != safe_name]
@@ -1596,7 +1563,6 @@ def handle_document(message):
             success_text = upload_text + f"""║  ✅ 𝐔𝐩𝐥𝐨𝐚𝐝 𝐂𝐨𝐦𝐩𝐥𝐞𝐭𝐞!
 ╚══════════════════════════════════════╝
 """
-        # Build post-upload keyboard
         markup = types.InlineKeyboardMarkup(row_width=2)
         if runnable:
             markup.add(types.InlineKeyboardButton("▶️ 𝐑𝐮𝐧 𝐍𝐨𝐰", callback_data=f"run_{safe_name}"))
@@ -1619,7 +1585,7 @@ def handle_document(message):
         except:
             bot.reply_to(message, f"❌ 𝐔𝐩𝐥𝐨𝐚𝐝 𝐟𝐚𝐢𝐥𝐞𝐝: {str(e)[:100]}")
 
-# --- Callback Query Handler (updated) ---
+# --- Callback Query Handler ---
 @bot.callback_query_handler(func=lambda call: True)
 def handle_callback(call):
     user_id = call.from_user.id
@@ -1646,6 +1612,9 @@ def handle_callback(call):
         elif data.startswith("restart_"):
             file_name = data[8:]
             restart_user_script(call, file_name)
+        elif data.startswith("edit_"):
+            file_name = data[5:]
+            edit_user_file(call, file_name)
         elif data == "back_to_files":
             show_user_files_callback(call)
         elif data == "admin_stopall":
@@ -1669,7 +1638,6 @@ def handle_callback(call):
 def show_file_actions(call, file_name):
     user_id = call.from_user.id
     is_running = is_bot_running(user_id, file_name)
-    # Determine type and runnability
     file_type = "unknown"
     runnable = False
     for name, ftype in user_files.get(user_id, []):
@@ -1709,7 +1677,6 @@ def run_user_script(call, file_name):
         bot.answer_callback_query(call.id, "⚠️ 𝐀𝐥𝐫𝐞𝐚𝐝𝐲 𝐫𝐮𝐧𝐧𝐢𝐧𝐠!")
         return
     bot.answer_callback_query(call.id, "🚀 𝐒𝐭𝐚𝐫𝐭𝐢𝐧𝐠...")
-    # Determine extension and use universal dispatcher
     ext = file_name.split('.')[-1].lower() if '.' in file_name else ''
     run_user_file(script_path, user_id, user_folder, file_name, call.message, ext)
 
@@ -1958,6 +1925,35 @@ def show_admin_logs(call):
         bot.send_message(call.message.chat.id, text[:4000], parse_mode='HTML')
     except Exception as e:
         bot.answer_callback_query(call.id, f"❌ 𝐄𝐫𝐫𝐨𝐫: {str(e)[:30]}")
+
+# --- Edit Functionality ---
+def edit_user_file(call, file_name):
+    user_id = call.from_user.id
+    if is_bot_running(user_id, file_name):
+        bot.answer_callback_query(call.id, "⚠️ Stop the script first!")
+        return
+    bot.answer_callback_query(call.id)
+    msg = bot.send_message(call.message.chat.id, f"📝 Send the new content for <code>{file_name}</code> (text only):", parse_mode='HTML')
+    bot.register_next_step_handler(msg, process_edit_file, file_name=file_name, user_id=user_id, call=call)
+
+def process_edit_file(message, file_name, user_id, call):
+    if not message.text:
+        bot.reply_to(message, "❌ Please send text content.")
+        return
+    user_folder = get_user_folder(user_id)
+    file_path = os.path.join(user_folder, file_name)
+    try:
+        with open(file_path, 'w', encoding='utf-8') as f:
+            f.write(message.text)
+        file_size = len(message.text.encode('utf-8'))
+        ext = file_name.split('.')[-1].lower() if '.' in file_name else ''
+        runnable = is_runnable_extension(ext)
+        save_user_file_db(user_id, file_name, ext, file_size, runnable)
+        bot.send_message(message.chat.id, f"✅ <code>{file_name}</code> edited successfully!", parse_mode='HTML')
+        # Refresh file actions view
+        show_file_actions(call, file_name)
+    except Exception as e:
+        bot.reply_to(message, f"❌ Error editing file: {str(e)[:100]}")
 
 # --- Cleanup on Exit ---
 def cleanup_on_exit():
