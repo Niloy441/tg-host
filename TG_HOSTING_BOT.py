@@ -21,7 +21,7 @@ import requests
 import random
 import hashlib
 
-# --- Flask Keep Alive ---
+
 from flask import Flask
 from threading import Thread
 app = Flask('')
